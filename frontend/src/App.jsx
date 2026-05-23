@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./index.css";
+import { TabProvider } from "./context/TabContext";
 import TabBar from "./components/TabBar";
 import GenerateTab    from "./tabs/GenerateTab";
 import DebugTab       from "./tabs/DebugTab";
@@ -26,17 +27,19 @@ export default function App() {
   const ActiveTab = TABS[tab];
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>ScriptForge AI</h1>
-        <span className="tagline">// AI-powered script generation &amp; analysis</span>
-      </header>
-      <div className="app-body">
-        <TabBar active={tab} onChange={setTab} />
-        <div className="tab-content">
-          <ActiveTab />
+    <TabProvider onNavigate={setTab}>
+      <div className="app">
+        <header className="app-header">
+          <h1>ScriptForge AI</h1>
+          <span className="tagline">// AI-powered script generation &amp; analysis</span>
+        </header>
+        <div className="app-body">
+          <TabBar active={tab} onChange={setTab} />
+          <div className="tab-content">
+            <ActiveTab />
+          </div>
         </div>
       </div>
-    </div>
+    </TabProvider>
   );
 }

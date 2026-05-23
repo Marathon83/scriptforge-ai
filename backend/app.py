@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
@@ -20,7 +21,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+client  = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+aclient = anthropic.AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 MODEL = "claude-sonnet-4-6"
 
 OS_CONTEXT = {
@@ -118,6 +120,116 @@ class SandboxReq(BaseModel):
     language: str = "bash"
     timeout: int = 15  # seconds, max 30
     stdin: str = ""
+
+
+# ── Streaming helpers ─────────────────────────────────────────────────────────
+
+async def _sse_stream(system_prompt: str, user_content, fallback: dict):
+    """Async generator yielding SSE lines. Sends text chunks then a final done+result."""
+    try:
+        accumulated = ""
+        async with aclient.messages.stream(
+            model=MODEL,
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_content}],
+        ) as stream:
+            async for text in stream.text_stream:
+                accumulated += text
+                yield f"data: {json.dumps({'text': text})}\n\n"
+        result = parse_json(accumulated, fallback)
+        yield f"data: {json.dumps({'done': True, 'result': result})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+
+def sse_response(gen):
+    return StreamingResponse(
+        gen,
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/generate/stream")
+async def generate_stream(req: GenerateReq):
+    system = f"""{os_ctx(req.os_profile)}
+Language: {req.language}
+
+You are ScriptForge AI. Generate a complete, working script based on the user's description.
+Keep the script focused and production-quality. Avoid unnecessary verbosity in comments.
+
+Return ONLY valid JSON with no markdown or backticks:
+{{
+  "script": "the complete script",
+  "explanation": "clear explanation of what it does",
+  "plan": ["step 1", "step 2"],
+  "dependencies": ["dep1"],
+  "security_flags": ["warning if dangerous command detected"],
+  "optimization_tips": ["tip1"]
+}}"""
+    fallback = {
+        "script": "", "explanation": "", "plan": [],
+        "dependencies": [], "security_flags": [], "optimization_tips": []
+    }
+    return sse_response(_sse_stream(system, req.prompt, fallback))
+
+
+@app.post("/debug/stream")
+async def debug_stream(req: DebugReq):
+    system = f"""{os_ctx(req.os_profile)}
+Language: {req.language}
+
+You are ScriptForge AI debugger. Analyze the code and error, then return ONLY valid JSON with no markdown or backticks:
+{{
+  "explanation": "what caused the error",
+  "fixed_code": "the corrected, complete code",
+  "problematic_lines": ["description of each problematic section"],
+  "why_it_occurred": "root cause explanation",
+  "prevention_tips": ["tip1"],
+  "security_flags": ["any security issues found"]
+}}"""
+    content = []
+    if req.screenshot_b64:
+        content.append({
+            "type": "image",
+            "source": {"type": "base64", "media_type": req.image_type, "data": req.screenshot_b64}
+        })
+        content.append({"type": "text", "text": "Above is a screenshot of the error. Analyze it and the code below."})
+    user_text = f"Code:\n{req.code}"
+    if req.error:
+        user_text += f"\n\nError output:\n{req.error}"
+    content.append({"type": "text", "text": user_text})
+    fallback = {
+        "explanation": "", "fixed_code": req.code,
+        "problematic_lines": [], "why_it_occurred": "",
+        "prevention_tips": [], "security_flags": []
+    }
+    return sse_response(_sse_stream(system, content, fallback))
+
+
+@app.post("/analyze/stream")
+async def analyze_stream(req: AnalyzeReq):
+    system = f"""{os_ctx(req.os_profile)}
+
+You are ScriptForge AI reverse analyzer. Thoroughly analyze the provided code.
+
+Return ONLY valid JSON with no markdown or backticks:
+{{
+  "summary": "overall explanation of what the script does",
+  "line_by_line": ["Line 1: explanation", "Line 2: explanation"],
+  "dependencies": ["dep1"],
+  "security_risks": ["risk1"],
+  "suspicious_behavior": ["behavior1"],
+  "optimization_suggestions": ["suggestion1"],
+  "security_flags": ["critical security issue if any"]
+}}"""
+    fallback = {
+        "summary": "", "line_by_line": [], "dependencies": [],
+        "security_risks": [], "suspicious_behavior": [],
+        "optimization_suggestions": [], "security_flags": []
+    }
+    return sse_response(_sse_stream(system, req.code, fallback))
 
 
 # ── Sandbox config ────────────────────────────────────────────────────────────

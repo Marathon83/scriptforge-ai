@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { tutorCode } from "../api/client";
+import { useTabCtx } from "../context/TabContext";
 import CodeBlock from "../components/CodeBlock";
+import SendTo from "../components/SendTo";
 
 const LANGS = ["bash", "powershell", "python", "javascript", "ruby", "go", "sql"];
 
@@ -40,8 +42,19 @@ export default function TutorTab() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
 
+  const runRef = useRef(null);
+
+  const { inbox, consume } = useTabCtx();
+  const incoming = inbox["tutor"];
+  useEffect(() => {
+    if (!incoming) return;
+    if (incoming.code)     setCode(incoming.code);
+    if (incoming.language) setLang(incoming.language);
+    consume("tutor");
+  }, [incoming]);
+
   const explain = async () => {
-    if (!code.trim()) return;
+    if (!code.trim() || loading) return;
     setLoading(true);
     setError("");
     setResult(null);
@@ -52,6 +65,13 @@ export default function TutorTab() {
     }
     setLoading(false);
   };
+
+  runRef.current = explain;
+  useEffect(() => {
+    const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
   return (
     <div>
@@ -88,7 +108,9 @@ export default function TutorTab() {
 
         <div className="btn-group">
           <button className="btn btn-primary" onClick={explain} disabled={loading || !code.trim()}>
-            {loading ? <><span className="spinner" /> Analyzing…</> : "🎓 Explain This"}
+            {loading
+              ? <><span className="spinner" /> Analyzing…</>
+              : <>🎓 Explain This <span style={{ color: "var(--green-dim)", fontSize: 10, marginLeft: 6 }}>Ctrl+↵</span></>}
           </button>
         </div>
 
@@ -97,13 +119,12 @@ export default function TutorTab() {
 
       {result && (
         <>
-          {/* Title + overview */}
           <div className="panel">
             <div className="panel-title">{result.title}</div>
             <p style={{ fontSize: 13, lineHeight: 1.8 }}>{result.overview}</p>
+            <SendTo code={code} language={language} />
           </div>
 
-          {/* Annotated line-by-line */}
           {result.annotated_lines?.length > 0 && (
             <div className="panel">
               <div className="panel-title">Line-by-Line Breakdown</div>
@@ -113,7 +134,6 @@ export default function TutorTab() {
                     background: "var(--bg3)", borderRadius: 4,
                     border: "1px solid var(--border)", overflow: "hidden",
                   }}>
-                    {/* code line */}
                     <div style={{
                       background: "#0d0d0d", borderBottom: "1px solid var(--border)",
                       padding: "6px 12px", display: "flex", alignItems: "center",
@@ -124,7 +144,6 @@ export default function TutorTab() {
                       </code>
                       {item.concept && <ConceptTag concept={item.concept} />}
                     </div>
-                    {/* explanation */}
                     <div style={{ padding: "8px 12px", fontSize: 13, lineHeight: 1.7, color: "var(--text)" }}>
                       {item.explanation}
                     </div>
@@ -134,7 +153,6 @@ export default function TutorTab() {
             </div>
           )}
 
-          {/* Bottom panels row */}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             {result.key_concepts?.length > 0 && (
               <div className="panel" style={{ flex: 1, minWidth: 220 }}>

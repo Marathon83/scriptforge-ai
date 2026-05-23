@@ -1,54 +1,116 @@
-import { useState } from "react";
-import { analyzeScript } from "../api/client";
+import { useState, useRef, useEffect } from "react";
+import { streamRequest } from "../api/client";
+import { useTabCtx } from "../context/TabContext";
 import OsProfileSelector from "../components/OsProfileSelector";
 import CodeBlock from "../components/CodeBlock";
+import SendTo from "../components/SendTo";
+
+const LANGS = ["bash", "powershell", "python", "javascript", "ruby", "go", "sql", "shell"];
 
 export default function AnalyzeTab() {
   const [code, setCode]           = useState("");
   const [osProfile, setOsProfile] = useState("linux");
+  const [language, setLanguage]   = useState("shell");
   const [result, setResult]       = useState(null);
+  const [streamText, setStreamText] = useState("");
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState("");
 
+  const abortRef = useRef(null);
+  const runRef   = useRef(null);
+
+  const { inbox, consume } = useTabCtx();
+  const incoming = inbox["analyze"];
+  useEffect(() => {
+    if (!incoming) return;
+    if (incoming.code)     setCode(incoming.code);
+    if (incoming.language) setLanguage(incoming.language);
+    consume("analyze");
+  }, [incoming]);
+
+  useEffect(() => () => abortRef.current?.abort(), []);
+
   const analyze = async () => {
-    if (!code.trim()) return;
+    if (!code.trim() || loading) return;
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
     setLoading(true);
     setError("");
     setResult(null);
+    setStreamText("");
     try {
-      setResult(await analyzeScript({ code, os_profile: osProfile }));
-    } catch {
-      setError("Backend error — is the server running?");
+      for await (const chunk of streamRequest("/analyze/stream",
+        { code, os_profile: osProfile },
+        abortRef.current.signal
+      )) {
+        if (chunk.error) { setError(chunk.error); break; }
+        if (chunk.done)  { setResult(chunk.result); setStreamText(""); }
+        else             { setStreamText(prev => prev + chunk.text); }
+      }
+    } catch (e) {
+      if (e.name !== "AbortError") setError("Backend error — is the server running?");
     }
     setLoading(false);
   };
+
+  runRef.current = analyze;
+  useEffect(() => {
+    const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
   return (
     <div>
       <div className="panel">
         <div className="panel-title">Reverse Analyzer</div>
 
-        <OsProfileSelector value={osProfile} onChange={setOsProfile} />
+        <div className="form-inline">
+          <div style={{ flex: 2 }}>
+            <OsProfileSelector value={osProfile} onChange={setOsProfile} />
+          </div>
+          <div className="form-row" style={{ minWidth: 140 }}>
+            <label>Language</label>
+            <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+              {LANGS.map((l) => <option key={l}>{l}</option>)}
+            </select>
+          </div>
+        </div>
 
         <div className="form-row">
           <label>Paste script to analyze</label>
-          <CodeBlock code={code} language="shell" readOnly={false} onChange={setCode} height={260} />
+          <CodeBlock code={code} language={language} readOnly={false} onChange={setCode} height={260} />
         </div>
 
         <div className="btn-group">
           <button className="btn btn-primary" onClick={analyze} disabled={loading || !code.trim()}>
-            {loading ? <><span className="spinner" /> Analyzing…</> : "🔬 Analyze"}
+            {loading
+              ? <><span className="spinner" /> Analyzing…</>
+              : <>🔬 Analyze <span style={{ color: "var(--green-dim)", fontSize: 10, marginLeft: 6 }}>Ctrl+↵</span></>}
           </button>
         </div>
 
         {error && <div className="error-msg mt-12">{error}</div>}
       </div>
 
+      {streamText && (
+        <div className="panel">
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span className="spinner" style={{ flexShrink: 0 }} />
+            <span className="panel-title" style={{ marginBottom: 0 }}>Analyzing…</span>
+          </div>
+          <pre style={{ fontSize: 11, color: "var(--text-dim)", maxHeight: 180, overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {streamText}
+          </pre>
+        </div>
+      )}
+
       {result && (
         <>
           <div className="panel">
             <div className="panel-title">Summary</div>
             <p style={{ fontSize: 13, lineHeight: 1.7 }}>{result.summary}</p>
+            <SendTo code={code} language={language} />
           </div>
 
           {result.line_by_line?.length > 0 && (

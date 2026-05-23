@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { improveScript } from "../api/client";
+import { useTabCtx } from "../context/TabContext";
 import OsProfileSelector from "../components/OsProfileSelector";
 import CodeBlock from "../components/CodeBlock";
+import SendTo from "../components/SendTo";
 
 const LANGS = ["bash", "powershell", "python", "javascript", "ruby", "go"];
 
@@ -21,8 +23,19 @@ export default function ImproveTab() {
   const [loading, setLoading]     = useState(false);
   const [error, setError]         = useState("");
 
+  const runRef = useRef(null);
+
+  const { inbox, consume } = useTabCtx();
+  const incoming = inbox["improve"];
+  useEffect(() => {
+    if (!incoming) return;
+    if (incoming.code)     setCode(incoming.code);
+    if (incoming.language) setLanguage(incoming.language);
+    consume("improve");
+  }, [incoming]);
+
   const improve = async () => {
-    if (!code.trim()) return;
+    if (!code.trim() || loading) return;
     setLoading(true);
     setError("");
     setResult(null);
@@ -33,6 +46,13 @@ export default function ImproveTab() {
     }
     setLoading(false);
   };
+
+  runRef.current = improve;
+  useEffect(() => {
+    const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
   return (
     <div>
@@ -74,7 +94,9 @@ export default function ImproveTab() {
 
         <div className="btn-group">
           <button className="btn btn-primary" onClick={improve} disabled={loading || !code.trim()}>
-            {loading ? <><span className="spinner" /> Improving…</> : "✨ Improve"}
+            {loading
+              ? <><span className="spinner" /> Improving…</>
+              : <>✨ Improve <span style={{ color: "var(--green-dim)", fontSize: 10, marginLeft: 6 }}>Ctrl+↵</span></>}
           </button>
         </div>
 
@@ -86,6 +108,7 @@ export default function ImproveTab() {
           <div className="panel">
             <div className="panel-title">Improved Code</div>
             <CodeBlock code={result.improved_code} language={language} readOnly />
+            <SendTo code={result.improved_code} language={language} />
           </div>
 
           {result.changes_made?.length > 0 && (
