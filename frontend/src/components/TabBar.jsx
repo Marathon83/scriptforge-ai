@@ -4,6 +4,7 @@ const TABS = [
   { id: "analyze",    label: "Analyzer" },
   { id: "convert",    label: "Convert" },
   { id: "improve",    label: "Improve" },
+  { id: "simulate",   label: "Simulate" },
   { id: "cheatsheet", label: "Cheat Sheets" },
   { id: "tutor",      label: "AI Tutor" },
   { id: "sandbox",    label: "Sandbox" },

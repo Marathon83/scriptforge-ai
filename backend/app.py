@@ -73,7 +73,10 @@ class GenerateReq(BaseModel):
 
 
 class SimulateReq(BaseModel):
-    prompt: str
+    prompt: str = ""
+    code: str = ""
+    language: str = "bash"
+    os_profile: str = "linux"
 
 
 class DebugReq(BaseModel):
@@ -446,6 +449,30 @@ risk_level must be exactly: low, medium, or high."""
     return parse_json(raw, {"summary": raw, "steps": [], "risk_level": "unknown", "warnings": []})
 
 
+@app.post("/simulate/stream")
+async def simulate_stream(req: SimulateReq):
+    system = f"""{os_ctx(req.os_profile)}
+Language: {req.language}
+
+You are ScriptForge AI in dry-run simulation mode. Walk through what this script does step by step WITHOUT executing it.
+
+Return ONLY valid JSON with no markdown or backticks:
+{{
+  "summary": "one-sentence summary of what this script does",
+  "steps": [
+    {{"action": "short action label", "detail": "what exactly happens here"}}
+  ],
+  "risk_level": "low",
+  "side_effects": ["creates file X", "modifies registry key Y"],
+  "warnings": ["dangerous pattern: rm -rf without guard"]
+}}
+risk_level must be exactly: low, medium, or high.
+Be thorough — cover every meaningful operation."""
+    user_content = f"Code:\n```{req.language}\n{req.code or req.prompt}\n```"
+    fallback = {"summary": "", "steps": [], "risk_level": "low", "side_effects": [], "warnings": []}
+    return sse_response(_sse_stream(system, user_content, fallback))
+
+
 @app.post("/debug")
 def debug(req: DebugReq):
     system = f"""{os_ctx(req.os_profile)}
@@ -684,6 +711,8 @@ async def tutor_stream(req: TutorReq):
     level_ctx = (
         "Explain as if talking to a complete beginner. Use simple analogies, avoid jargon, define every term."
         if req.level == "beginner"
+        else "Assume expert-level knowledge. Discuss performance implications, edge cases, idiomatic patterns, and non-obvious behaviour. Skip basics entirely."
+        if req.level == "expert"
         else "Explain for an intermediate programmer who knows basics but wants deeper understanding."
     )
     system = f"""You are ScriptForge AI Tutor. {level_ctx}

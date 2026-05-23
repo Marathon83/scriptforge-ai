@@ -20,6 +20,12 @@ export default function SendTo({ code, language, error = "" }) {
       <button className="btn btn-secondary btn-icon" onClick={() => sendToTab("convert", { code, language })}>
         ⇄ Convert
       </button>
+      <button className="btn btn-secondary btn-icon" onClick={() => sendToTab("simulate", { code, language })}>
+        ▷ Simulate
+      </button>
+      <button className="btn btn-secondary btn-icon" onClick={() => sendToTab("tutor", { code, language })}>
+        🎓 Tutor
+      </button>
     </div>
   );
 }

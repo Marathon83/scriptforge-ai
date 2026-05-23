@@ -102,7 +102,7 @@ export default function TutorTab() {
           <div className="form-row">
             <label>Level</label>
             <div style={{ display: "flex", gap: 6 }}>
-              {["beginner", "intermediate"].map((lv) => (
+              {["beginner", "intermediate", "expert"].map((lv) => (
                 <button
                   key={lv}
                   className={`os-chip${level === lv ? " active" : ""}`}

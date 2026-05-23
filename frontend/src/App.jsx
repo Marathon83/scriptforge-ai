@@ -7,6 +7,7 @@ import DebugTab       from "./tabs/DebugTab";
 import AnalyzeTab     from "./tabs/AnalyzeTab";
 import ConvertTab     from "./tabs/ConvertTab";
 import ImproveTab     from "./tabs/ImproveTab";
+import SimulateTab    from "./tabs/SimulateTab";
 import CheatSheetsTab from "./tabs/CheatSheetsTab";
 import TutorTab       from "./tabs/TutorTab";
 import SandboxTab     from "./tabs/SandboxTab";
@@ -17,6 +18,7 @@ const TABS = {
   analyze:    AnalyzeTab,
   convert:    ConvertTab,
   improve:    ImproveTab,
+  simulate:   SimulateTab,
   cheatsheet: CheatSheetsTab,
   tutor:      TutorTab,
   sandbox:    SandboxTab,
