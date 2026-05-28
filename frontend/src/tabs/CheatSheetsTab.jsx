@@ -117,7 +117,7 @@ const CHEATSHEET_PARAMS = {
 
 const CATEGORIES = Object.keys(CHEATSHEET_PARAMS);
 
-export default function CheatSheetsTab() {
+export default function CheatSheetsTab({ isActive = false }) {
   const [category, setCategory]   = useState(CATEGORIES[0]);
   const [command, setCommand]     = useState(Object.keys(CHEATSHEET_PARAMS[CATEGORIES[0]])[0]);
   const [osProfile, setOsProfile] = useState("linux");
@@ -145,12 +145,14 @@ export default function CheatSheetsTab() {
     setCommand(firstCmd);
     setParams({});
     setResult(null);
+    setFocusedParam(null);
   };
 
   const selectCommand = (cmd) => {
     setCommand(cmd);
     setParams({});
     setResult(null);
+    setFocusedParam(null);
   };
 
   const currentDefaults = CHEATSHEET_PARAMS[category]?.[command] || {};
@@ -181,10 +183,11 @@ export default function CheatSheetsTab() {
 
   runRef.current = build;
   useEffect(() => {
+    if (!isActive) return;
     const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, []);
+  }, [isActive]);
 
   const commands = Object.keys(CHEATSHEET_PARAMS[category] || {});
 
@@ -265,6 +268,11 @@ export default function CheatSheetsTab() {
               {recording ? "⏹ Stop" : "🎤 Voice"}
             </button>
           )}
+          {loading && (
+            <button className="btn btn-danger btn-icon" onClick={() => abortRef.current?.abort()}>
+              ✕ Cancel
+            </button>
+          )}
         </div>
         {voiceOk && !focusedParam && (
           <p style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 6 }}>
@@ -272,18 +280,23 @@ export default function CheatSheetsTab() {
           </p>
         )}
 
-        {error && <div className="error-msg mt-12">{error}</div>}
+        {error && (
+          <div className="error-msg mt-12" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span>{error}</span>
+            <button className="btn btn-secondary btn-icon" style={{ flexShrink: 0 }} onClick={() => runRef.current?.()}>
+              ↺ Retry
+            </button>
+          </div>
+        )}
       </div>
 
       {streamText && (
-        <div className="panel">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span className="spinner" style={{ flexShrink: 0 }} />
-            <span className="panel-title" style={{ marginBottom: 0 }}>Building…</span>
-          </div>
-          <pre style={{ fontSize: 11, color: "var(--text-dim)", maxHeight: 180, overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {streamText}
-          </pre>
+        <div className="panel stream-panel">
+          <span className="spinner" style={{ flexShrink: 0 }} />
+          <span className="panel-title" style={{ marginBottom: 0 }}>Building…</span>
+          <span style={{ color: "var(--text-dim)", fontSize: 11, marginLeft: "auto" }}>
+            {streamText.length.toLocaleString()} chars
+          </span>
         </div>
       )}
 

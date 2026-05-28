@@ -9,7 +9,7 @@ import useVoice from "../hooks/useVoice";
 
 const LANGS = ["bash", "powershell", "python", "javascript", "ruby", "go", "sql"];
 
-export default function SimulateTab() {
+export default function SimulateTab({ isActive = false }) {
   const [code, setCode]           = useState("");
   const [language, setLanguage]   = useState("bash");
   const [osProfile, setOsProfile] = useState("linux");
@@ -60,10 +60,11 @@ export default function SimulateTab() {
 
   runRef.current = simulate;
   useEffect(() => {
+    if (!isActive) return;
     const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, []);
+  }, [isActive]);
 
   return (
     <div>
@@ -95,20 +96,30 @@ export default function SimulateTab() {
               {recording ? "⏹ Stop" : "🎤 Voice"}
             </button>
           )}
+          {loading && (
+            <button className="btn btn-danger btn-icon" onClick={() => abortRef.current?.abort()}>
+              ✕ Cancel
+            </button>
+          )}
         </div>
 
-        {error && <div className="error-msg mt-12">{error}</div>}
+        {error && (
+          <div className="error-msg mt-12" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span>{error}</span>
+            <button className="btn btn-secondary btn-icon" style={{ flexShrink: 0 }} onClick={() => runRef.current?.()}>
+              ↺ Retry
+            </button>
+          </div>
+        )}
       </div>
 
       {streamText && (
-        <div className="panel">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span className="spinner" style={{ flexShrink: 0 }} />
-            <span className="panel-title" style={{ marginBottom: 0 }}>Simulating…</span>
-          </div>
-          <pre style={{ fontSize: 11, color: "var(--text-dim)", maxHeight: 180, overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {streamText}
-          </pre>
+        <div className="panel stream-panel">
+          <span className="spinner" style={{ flexShrink: 0 }} />
+          <span className="panel-title" style={{ marginBottom: 0 }}>Simulating…</span>
+          <span style={{ color: "var(--text-dim)", fontSize: 11, marginLeft: "auto" }}>
+            {streamText.length.toLocaleString()} chars
+          </span>
         </div>
       )}
 

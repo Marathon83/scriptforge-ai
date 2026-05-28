@@ -12,21 +12,20 @@ import CheatSheetsTab from "./tabs/CheatSheetsTab";
 import TutorTab       from "./tabs/TutorTab";
 import SandboxTab     from "./tabs/SandboxTab";
 
-const TABS = {
-  generate:   GenerateTab,
-  debug:      DebugTab,
-  analyze:    AnalyzeTab,
-  convert:    ConvertTab,
-  improve:    ImproveTab,
-  simulate:   SimulateTab,
-  cheatsheet: CheatSheetsTab,
-  tutor:      TutorTab,
-  sandbox:    SandboxTab,
-};
+const TABS = [
+  { id: "generate",   Component: GenerateTab },
+  { id: "debug",      Component: DebugTab },
+  { id: "analyze",    Component: AnalyzeTab },
+  { id: "convert",    Component: ConvertTab },
+  { id: "improve",    Component: ImproveTab },
+  { id: "simulate",   Component: SimulateTab },
+  { id: "cheatsheet", Component: CheatSheetsTab },
+  { id: "tutor",      Component: TutorTab },
+  { id: "sandbox",    Component: SandboxTab },
+];
 
 export default function App() {
   const [tab, setTab] = useState("generate");
-  const ActiveTab = TABS[tab];
 
   return (
     <TabProvider onNavigate={setTab}>
@@ -38,7 +37,11 @@ export default function App() {
         <div className="app-body">
           <TabBar active={tab} onChange={setTab} />
           <div className="tab-content">
-            <ActiveTab />
+            {TABS.map(({ id, Component }) => (
+              <div key={id} style={{ display: id === tab ? "block" : "none" }}>
+                <Component isActive={id === tab} />
+              </div>
+            ))}
           </div>
         </div>
       </div>

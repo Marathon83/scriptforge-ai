@@ -213,7 +213,7 @@ function HistoryRow({ item, onRestore }) {
   );
 }
 
-export default function SandboxTab() {
+export default function SandboxTab({ isActive = false }) {
   const [lang, setLang]           = useState("bash");
   const [code, setCode]           = useState(EXAMPLES.bash);
   const [timeout_, setTimeout_]   = useState(15);
@@ -294,6 +294,7 @@ export default function SandboxTab() {
   const runRef = useRef(run);
   runRef.current = run;
   useEffect(() => {
+    if (!isActive) return;
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
@@ -302,7 +303,7 @@ export default function SandboxTab() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [isActive]);
 
   const restore = (c, l) => {
     setCode(c);
@@ -386,6 +387,11 @@ export default function SandboxTab() {
               {recording ? "⏹ Stop" : "🎤 Stdin"}
             </button>
           )}
+          {loading && (
+            <button className="btn btn-danger btn-icon" onClick={() => abortRef.current?.abort()}>
+              ✕ Cancel
+            </button>
+          )}
           <button className="btn btn-secondary" onClick={() => { setCode(EXAMPLES[lang] || ""); setResult(null); }}>
             Reset Example
           </button>
@@ -396,7 +402,14 @@ export default function SandboxTab() {
           )}
         </div>
 
-        {error && <div className="error-msg mt-12">{error}</div>}
+        {error && (
+          <div className="error-msg mt-12" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span>{error}</span>
+            <button className="btn btn-secondary btn-icon" style={{ flexShrink: 0 }} onClick={() => runRef.current?.()}>
+              ↺ Retry
+            </button>
+          </div>
+        )}
       </div>
 
       {liveOutput && (

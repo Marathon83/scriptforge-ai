@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { simulateScript, streamRequest } from "../api/client";
+import { streamRequest } from "../api/client";
 import { useTabCtx } from "../context/TabContext";
 import OsProfileSelector from "../components/OsProfileSelector";
 import CodeBlock from "../components/CodeBlock";
@@ -9,19 +9,20 @@ import useVoice from "../hooks/useVoice";
 
 const LANGS = ["bash", "powershell", "python", "javascript", "ruby", "go"];
 
-export default function GenerateTab() {
-  const [prompt, setPrompt]       = useState("");
-  const [osProfile, setOsProfile] = useState("linux");
-  const [language, setLanguage]   = useState("bash");
-  const [result, setResult]       = useState(null);
+export default function GenerateTab({ isActive = false }) {
+  const [prompt, setPrompt]         = useState("");
+  const [osProfile, setOsProfile]   = useState("linux");
+  const [language, setLanguage]     = useState("bash");
+  const [result, setResult]         = useState(null);
   const [streamText, setStreamText] = useState("");
-  const [sim, setSim]             = useState(null);
-  const [loading, setLoading]     = useState(false);
-  const [simLoading, setSimLoad]  = useState(false);
-  const [error, setError]         = useState("");
+  const [sim, setSim]               = useState(null);
+  const [loading, setLoading]       = useState(false);
+  const [simLoading, setSimLoad]    = useState(false);
+  const [error, setError]           = useState("");
 
-  const abortRef = useRef(null);
-  const runRef   = useRef(null);
+  const abortRef    = useRef(null);
+  const simAbortRef = useRef(null);
+  const runRef      = useRef(null);
 
   const { inbox, consume } = useTabCtx();
   const incoming = inbox["generate"];
@@ -31,7 +32,7 @@ export default function GenerateTab() {
     consume("generate");
   }, [incoming]);
 
-  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => () => { abortRef.current?.abort(); simAbortRef.current?.abort(); }, []);
 
   const onVoiceResult = useCallback((text) => setPrompt(p => p ? `${p} ${text}` : text), []);
   const { recording, supported: voiceOk, toggle: toggleVoice } = useVoice(onVoiceResult);
@@ -60,23 +61,33 @@ export default function GenerateTab() {
     setLoading(false);
   };
 
-  runRef.current = generate;
-  useEffect(() => {
-    const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, []);
-
   const simulate = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || simLoading) return;
+    simAbortRef.current?.abort();
+    simAbortRef.current = new AbortController();
     setSimLoad(true);
+    setSim(null);
     try {
-      setSim(await simulateScript({ prompt }));
-    } catch {
-      setSim({ error: "Simulation failed" });
+      for await (const chunk of streamRequest("/simulate/stream",
+        { prompt, os_profile: osProfile, language },
+        simAbortRef.current.signal
+      )) {
+        if (chunk.error) { setSim({ error: chunk.error }); break; }
+        if (chunk.done)  { setSim(chunk.result); }
+      }
+    } catch (e) {
+      if (e.name !== "AbortError") setSim({ error: "Simulation failed" });
     }
     setSimLoad(false);
   };
+
+  runRef.current = generate;
+  useEffect(() => {
+    if (!isActive) return;
+    const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [isActive]);
 
   return (
     <div>
@@ -118,40 +129,60 @@ export default function GenerateTab() {
               {recording ? "⏹ Stop" : "🎤 Voice"}
             </button>
           )}
+          {loading && (
+            <button className="btn btn-danger btn-icon" onClick={() => abortRef.current?.abort()}>
+              ✕ Cancel
+            </button>
+          )}
+          {simLoading && (
+            <button className="btn btn-danger btn-icon" onClick={() => simAbortRef.current?.abort()}>
+              ✕ Cancel Sim
+            </button>
+          )}
         </div>
 
-        {error && <div className="error-msg mt-12">{error}</div>}
+        {error && (
+          <div className="error-msg mt-12" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span>{error}</span>
+            <button className="btn btn-secondary btn-icon" style={{ flexShrink: 0 }} onClick={() => runRef.current?.()}>
+              ↺ Retry
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Live stream preview */}
       {streamText && (
-        <div className="panel">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span className="spinner" style={{ flexShrink: 0 }} />
-            <span className="panel-title" style={{ marginBottom: 0 }}>Generating…</span>
-          </div>
-          <pre style={{ fontSize: 11, color: "var(--text-dim)", maxHeight: 180, overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {streamText}
-          </pre>
+        <div className="panel stream-panel">
+          <span className="spinner" style={{ flexShrink: 0 }} />
+          <span className="panel-title" style={{ marginBottom: 0 }}>Generating…</span>
+          <span style={{ color: "var(--text-dim)", fontSize: 11, marginLeft: "auto" }}>
+            {streamText.length.toLocaleString()} chars
+          </span>
         </div>
       )}
 
       {sim && (
         <div className="panel">
           <div className="panel-title">Simulation</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-            <SecurityBadge level={sim.risk_level} />
-            <span className="text-dim" style={{ fontSize: 13 }}>{sim.summary}</span>
-          </div>
-          {sim.steps?.length > 0 && (
-            <ul className="result-list mt-8">
-              {sim.steps.map((s, i) => <li key={i}>{s}</li>)}
-            </ul>
-          )}
-          {sim.warnings?.length > 0 && (
-            <ul className="result-list mt-8">
-              {sim.warnings.map((w, i) => <li key={i} className="warn">⚠ {w}</li>)}
-            </ul>
+          {sim.error ? (
+            <p style={{ color: "var(--red)", fontSize: 13 }}>{sim.error}</p>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                <SecurityBadge level={sim.risk_level} />
+                <span className="text-dim" style={{ fontSize: 13 }}>{sim.summary}</span>
+              </div>
+              {sim.steps?.length > 0 && (
+                <ul className="result-list mt-8">
+                  {sim.steps.map((s, i) => <li key={i}>{typeof s === "object" ? s.action : s}</li>)}
+                </ul>
+              )}
+              {sim.warnings?.length > 0 && (
+                <ul className="result-list mt-8">
+                  {sim.warnings.map((w, i) => <li key={i} className="warn">⚠ {w}</li>)}
+                </ul>
+              )}
+            </>
           )}
         </div>
       )}

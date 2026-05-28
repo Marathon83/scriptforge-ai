@@ -23,8 +23,31 @@ function unescape(src) {
   return src;
 }
 
+const MONACO_EDIT_OPTIONS = {
+  readOnly: false,
+  minimap: { enabled: false },
+  fontSize: 13,
+  lineNumbers: "on",
+  scrollBeyondLastLine: false,
+  wordWrap: "on",
+  fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+  automaticLayout: true,
+  tabSize: 2,
+  scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
+};
+
+const MONACO_READ_OPTIONS = {
+  readOnly: true,
+  minimap: { enabled: false },
+  fontSize: 13,
+  lineNumbers: "on",
+  scrollBeyondLastLine: false,
+  wordWrap: "on",
+  fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+};
+
 export default function CodeBlock({ code, language = "shell", readOnly = true, onChange, height = 320 }) {
-  const [copied, setCopied]         = useState(false);
+  const [copied, setCopied]           = useState(false);
   const [pastecopied, setPasteCopied] = useState(false);
 
   const pasteRunner = PASTE_RUNNERS[language] || null;
@@ -73,53 +96,16 @@ export default function CodeBlock({ code, language = "shell", readOnly = true, o
     </div>
   );
 
-  // Editable: plain textarea — reliable paste, no controlled-value conflicts
-  if (!readOnly) {
-    return (
-      <div className="code-block-wrap">
-        {toolbar}
-        <textarea
-          value={code || ""}
-          onChange={(e) => onChange && onChange(e.target.value)}
-          spellCheck={false}
-          style={{
-            background: "#1e1e1e",
-            border: "none",
-            borderRadius: 0,
-            color: "#d4d4d4",
-            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-            fontSize: 13,
-            height,
-            lineHeight: 1.5,
-            outline: "none",
-            padding: "12px 16px",
-            resize: "vertical",
-            width: "100%",
-          }}
-          placeholder="Paste your code here…"
-        />
-      </div>
-    );
-  }
-
-  // Read-only: Monaco with full syntax highlighting
   return (
     <div className="code-block-wrap">
       {toolbar}
       <Editor
         height={height}
         language={MONACO_LANG[language] || "shell"}
-        value={unescape(code || "")}
+        value={readOnly ? unescape(code || "") : (code || "")}
+        onChange={readOnly ? undefined : (val) => onChange && onChange(val ?? "")}
         theme="vs-dark"
-        options={{
-          readOnly: true,
-          minimap: { enabled: false },
-          fontSize: 13,
-          lineNumbers: "on",
-          scrollBeyondLastLine: false,
-          wordWrap: "on",
-          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-        }}
+        options={readOnly ? MONACO_READ_OPTIONS : MONACO_EDIT_OPTIONS}
       />
     </div>
   );

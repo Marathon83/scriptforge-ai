@@ -1,5 +1,3 @@
-import axios from "axios";
-
 // Each runtime environment needs a different address for the local backend:
 //   Web dev              → 127.0.0.1 (same machine)
 //   iOS simulator        → localhost  (simulator forwards to host)
@@ -21,18 +19,7 @@ function resolveBase() {
   return "http://127.0.0.1:8000";
 }
 
-const BASE = resolveBase();
-const api = axios.create({ baseURL: BASE });
-
-export const generateScript  = (data) => api.post("/generate", data).then(r => r.data);
-export const simulateScript  = (data) => api.post("/simulate", data).then(r => r.data);
-export const debugScript     = (data) => api.post("/debug", data).then(r => r.data);
-export const analyzeScript   = (data) => api.post("/analyze", data).then(r => r.data);
-export const convertScript   = (data) => api.post("/convert", data).then(r => r.data);
-export const improveScript   = (data) => api.post("/improve", data).then(r => r.data);
-export const buildCheatsheet = (data) => api.post("/cheatsheet", data).then(r => r.data);
-export const tutorCode       = (data) => api.post("/tutor", data).then(r => r.data);
-export const runSandbox      = (data) => api.post("/sandbox", data).then(r => r.data);
+export const BASE = resolveBase();
 
 // Async generator for SSE streaming endpoints.
 // Yields { text } chunks while streaming, then { done: true, result } when complete.
