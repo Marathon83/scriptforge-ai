@@ -41,7 +41,7 @@ export async function* streamRequest(endpoint, data, signal) {
     try {
       const body = await response.json();
       if (body.detail) msg = body.detail;
-    } catch {}
+    } catch { /* response body is not JSON — use HTTP status message */ }
     throw new Error(msg);
   }
 

@@ -31,15 +31,18 @@ try:
 except OSError:
     pass  # read-only FS — stdout only
 
+_DEV_ORIGINS = [
+    "http://localhost:5174", "http://localhost:5173",
+    "http://127.0.0.1:5173", "http://127.0.0.1:5174",
+    "capacitor://localhost", "https://localhost",
+]
+_extra = os.getenv("CORS_ORIGINS", "")
+_ALLOWED_ORIGINS = _DEV_ORIGINS + [o.strip() for o in _extra.split(",") if o.strip()]
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5174", "http://localhost:5173",
-        "http://127.0.0.1:5173", "http://127.0.0.1:5174",
-        "capacitor://localhost", "https://localhost",
-        # Add your production domain here, e.g.: "https://yourdomain.com"
-    ],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,12 +59,13 @@ class _RateLimiter:
 
     async def is_allowed(self, key: str) -> bool:
         async with self._lock:
-            now = time.time()
-            ts  = self._store[key]
-            self._store[key] = [t for t in ts if now - t < self.period]
-            if len(self._store[key]) >= self.calls:
+            now      = time.time()
+            filtered = [t for t in self._store.get(key, []) if now - t < self.period]
+            if len(filtered) >= self.calls:
+                self._store[key] = filtered
                 return False
-            self._store[key].append(now)
+            filtered.append(now)
+            self._store[key] = filtered
             return True
 
 _ai_limiter      = _RateLimiter(calls=60, period=3600)   # 60 AI requests/hour per IP
