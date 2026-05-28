@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { streamRequest } from "../api/client";
 import OsProfileSelector from "../components/OsProfileSelector";
 import CodeBlock from "../components/CodeBlock";
+import useVoice from "../hooks/useVoice";
 
 const CHEATSHEET_PARAMS = {
   Networking: {
@@ -128,8 +129,15 @@ export default function CheatSheetsTab() {
 
   const abortRef = useRef(null);
   const runRef   = useRef(null);
+  const [focusedParam, setFocusedParam] = useState(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  const onVoiceResult = useCallback((text) => {
+    if (!focusedParam) return;
+    setParams(p => ({ ...p, [focusedParam]: p[focusedParam] ? `${p[focusedParam]} ${text}` : text }));
+  }, [focusedParam]);
+  const { recording, supported: voiceOk, toggle: toggleVoice } = useVoice(onVoiceResult);
 
   const selectCategory = (cat) => {
     setCategory(cat);
@@ -223,10 +231,16 @@ export default function CheatSheetsTab() {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {Object.entries(currentDefaults).map(([key, def]) => (
                 <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 150px" }}>
-                  <label>{key}</label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {key}
+                    {voiceOk && focusedParam === key && (
+                      <span style={{ fontSize: 9, color: "var(--green-dim)", letterSpacing: 1 }}>● focused</span>
+                    )}
+                  </label>
                   <input
                     value={mergedParams[key] ?? ""}
                     onChange={(e) => setParams((p) => ({ ...p, [key]: e.target.value }))}
+                    onFocus={() => setFocusedParam(key)}
                     placeholder={String(def)}
                   />
                 </div>
@@ -241,7 +255,22 @@ export default function CheatSheetsTab() {
               ? <><span className="spinner" /> Building…</>
               : <>⚙ Build Command <span style={{ color: "var(--green-dim)", fontSize: 10, marginLeft: 6 }}>Ctrl+↵</span></>}
           </button>
+          {voiceOk && (
+            <button
+              className={`btn btn-voice${recording ? " recording" : ""}`}
+              onClick={toggleVoice}
+              title={focusedParam ? `Dictate into "${focusedParam}"` : "Focus a parameter field first"}
+              disabled={!focusedParam}
+            >
+              {recording ? "⏹ Stop" : "🎤 Voice"}
+            </button>
+          )}
         </div>
+        {voiceOk && !focusedParam && (
+          <p style={{ fontSize: 11, color: "var(--text-dim)", marginTop: 6 }}>
+            Click a parameter field to enable voice input for it.
+          </p>
+        )}
 
         {error && <div className="error-msg mt-12">{error}</div>}
       </div>
