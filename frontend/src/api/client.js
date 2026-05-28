@@ -1,9 +1,27 @@
 import axios from "axios";
 
-// On native (iOS/Android) the device can't reach 127.0.0.1 on the host.
-// Set VITE_API_URL in .env.production (or .env.local) to your server's IP/URL.
-// e.g. VITE_API_URL=http://192.168.1.42:8000
-const BASE = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000";
+// Each runtime environment needs a different address for the local backend:
+//   Web dev              → 127.0.0.1 (same machine)
+//   iOS simulator        → localhost  (simulator forwards to host)
+//   Android emulator     → 10.0.2.2  (emulator's alias for the host)
+//   Real device / custom → VITE_API_URL env var overrides all of the above
+//
+// window.Capacitor is used intentionally instead of the @capacitor/core module
+// import. The module initialises with /*#__PURE__*/ at the top level, which
+// lets Rollup evaluate isNativePlatform() as a build-time constant (false) and
+// tree-shake the native branches out of the bundle entirely.
+function resolveBase() {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  const cap = window.Capacitor;
+  if (cap?.isNativePlatform?.()) {
+    return cap.getPlatform() === "android"
+      ? "http://10.0.2.2:8000"
+      : "http://localhost:8000";
+  }
+  return "http://127.0.0.1:8000";
+}
+
+const BASE = resolveBase();
 const api = axios.create({ baseURL: BASE });
 
 export const generateScript  = (data) => api.post("/generate", data).then(r => r.data);

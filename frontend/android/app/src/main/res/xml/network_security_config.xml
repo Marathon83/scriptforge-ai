@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext HTTP to any host. ScriptForge AI connects to a
+         user-configured local backend (VITE_API_URL) which may be plain HTTP.
+         Restrict this to specific domains once a production HTTPS backend exists. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

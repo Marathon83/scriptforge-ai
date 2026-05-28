@@ -23,9 +23,12 @@ const config: CapacitorConfig = {
   },
 
   plugins: {
-    // CapacitorHttp replaces fetch/XHR on native so requests bypass CORS
+    // CapacitorHttp is intentionally disabled: it buffers entire responses and
+    // breaks the SSE streaming used by all tabs. Instead, capacitor://localhost
+    // is whitelisted in the backend CORS config so the WebView's native fetch
+    // can stream directly.
     CapacitorHttp: {
-      enabled: true,
+      enabled: false,
     },
   },
 };
