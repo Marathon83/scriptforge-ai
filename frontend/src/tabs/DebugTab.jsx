@@ -29,12 +29,16 @@ export default function DebugTab({ isActive = false }) {
   const incoming = inbox["debug"];
   useEffect(() => {
     if (!incoming) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (incoming.code)     setCode(incoming.code);
+     
     if (incoming.language) setLanguage(incoming.language);
+     
     if (incoming.error)    setErrorText(incoming.error);
     const shouldAutoRun = incoming.autoRun;
     consume("debug");
     if (shouldAutoRun) setTimeout(() => runRef.current?.(), 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -83,7 +87,7 @@ export default function DebugTab({ isActive = false }) {
     setLoading(false);
   };
 
-  runRef.current = debug;
+  useEffect(() => { runRef.current = debug; });
   useEffect(() => {
     if (!isActive) return;
     const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };

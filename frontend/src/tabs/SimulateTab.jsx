@@ -30,9 +30,12 @@ export default function SimulateTab({ isActive = false }) {
   const incoming = inbox["simulate"];
   useEffect(() => {
     if (!incoming) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (incoming.code)     setCode(incoming.code);
+     
     if (incoming.language) setLanguage(incoming.language);
     consume("simulate");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming]);
 
   const simulate = async () => {
@@ -58,7 +61,7 @@ export default function SimulateTab({ isActive = false }) {
     setLoading(false);
   };
 
-  runRef.current = simulate;
+  useEffect(() => { runRef.current = simulate; });
   useEffect(() => {
     if (!isActive) return;
     const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };

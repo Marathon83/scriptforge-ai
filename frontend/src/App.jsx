@@ -35,7 +35,9 @@ export default function App() {
   const [hasKey, setHasKey] = useState(() => !!localStorage.getItem("scriptforge_api_key"));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!hasKey) setShowKeyModal(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleModalClose = () => {

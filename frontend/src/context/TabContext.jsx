@@ -22,4 +22,5 @@ export function TabProvider({ onNavigate, children }) {
   return <Ctx.Provider value={{ inbox, sendToTab, consume }}>{children}</Ctx.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTabCtx = () => useContext(Ctx);

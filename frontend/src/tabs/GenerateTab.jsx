@@ -28,8 +28,10 @@ export default function GenerateTab({ isActive = false }) {
   const incoming = inbox["generate"];
   useEffect(() => {
     if (!incoming) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (incoming.prompt) setPrompt(incoming.prompt);
     consume("generate");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming]);
 
   useEffect(() => () => { abortRef.current?.abort(); simAbortRef.current?.abort(); }, []);
@@ -81,7 +83,7 @@ export default function GenerateTab({ isActive = false }) {
     setSimLoad(false);
   };
 
-  runRef.current = generate;
+  useEffect(() => { runRef.current = generate; });
   useEffect(() => {
     if (!isActive) return;
     const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };

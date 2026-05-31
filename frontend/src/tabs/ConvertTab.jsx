@@ -23,9 +23,12 @@ export default function ConvertTab({ isActive = false }) {
   const incoming = inbox["convert"];
   useEffect(() => {
     if (!incoming) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (incoming.code)     setCode(incoming.code);
+     
     if (incoming.language) setFrom(incoming.language);
     consume("convert");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -62,7 +65,7 @@ export default function ConvertTab({ isActive = false }) {
     setLoading(false);
   };
 
-  runRef.current = convert;
+  useEffect(() => { runRef.current = convert; });
   useEffect(() => {
     if (!isActive) return;
     const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };

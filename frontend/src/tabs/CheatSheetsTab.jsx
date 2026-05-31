@@ -182,7 +182,7 @@ export default function CheatSheetsTab({ isActive = false }) {
     setLoading(false);
   };
 
-  runRef.current = build;
+  useEffect(() => { runRef.current = build; });
   useEffect(() => {
     if (!isActive) return;
     const h = (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runRef.current(); } };

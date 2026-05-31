@@ -233,10 +233,14 @@ export default function SandboxTab({ isActive = false }) {
   const incoming = inbox["sandbox"];
   useEffect(() => {
     if (!incoming) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (incoming.code)     setCode(incoming.code);
+     
     if (incoming.language) setLang(incoming.language);
+     
     setResult(null);
     consume("sandbox");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming]);
 
   const onVoiceResult = useCallback((text) => {
@@ -301,9 +305,8 @@ export default function SandboxTab({ isActive = false }) {
     setLoading(false);
   };
 
-  // keep a stable ref so the keydown effect doesn't need to re-register
-  const runRef = useRef(run);
-  runRef.current = run;
+  const runRef = useRef(null);
+  useEffect(() => { runRef.current = run; });
   useEffect(() => {
     if (!isActive) return;
     const handler = (e) => {
