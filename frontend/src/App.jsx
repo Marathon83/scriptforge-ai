@@ -3,6 +3,7 @@ import "./index.css";
 import { TabProvider } from "./context/TabContext";
 import TabBar from "./components/TabBar";
 import ApiKeyModal from "./components/ApiKeyModal";
+import AboutModal from "./components/AboutModal";
 import ErrorBoundary from "./components/ErrorBoundary";
 import GenerateTab    from "./tabs/GenerateTab";
 import DebugTab       from "./tabs/DebugTab";
@@ -33,6 +34,7 @@ const TABS = [
 export default function App() {
   const [tab, setTab] = useState("generate");
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [hasKey, setHasKey] = useState(() => !!localStorage.getItem("scriptforge_api_key"));
 
   useEffect(() => {
@@ -64,6 +66,14 @@ export default function App() {
             )}
             <button
               className="btn btn-secondary btn-icon"
+              onClick={() => setShowAbout(true)}
+              title="About — Feature Overview"
+              style={{ fontSize: 16, padding: "4px 10px" }}
+            >
+              ℹ
+            </button>
+            <button
+              className="btn btn-secondary btn-icon"
               onClick={() => setShowKeyModal(true)}
               title="Settings — Anthropic API Key"
               style={{ fontSize: 16, padding: "4px 10px" }}
@@ -92,6 +102,7 @@ export default function App() {
           isRequired={!hasKey}
         />
       )}
+      {showAbout && <AboutModal onClose={() => setShowAbout(false)} />}
     </TabProvider>
   );
 }
