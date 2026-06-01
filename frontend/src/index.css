@@ -599,6 +599,44 @@ select option {
   padding: 1px 5px;
 }
 
+.about-install-step {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.about-step-label {
+  color: var(--green-dim);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.about-code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 0;
+  overflow-x: auto;
+  padding: 10px 14px;
+  white-space: pre;
+}
+
+.about-link {
+  color: var(--green-dim);
+  text-decoration: none;
+}
+
+.about-link:hover {
+  color: var(--green);
+  text-decoration: underline;
+}
+
 /* ── No-key badge ── */
 .no-key-badge {
   background: rgba(255, 51, 51, 0.1);

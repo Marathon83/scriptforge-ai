@@ -5,6 +5,42 @@ export default function AboutModal({ onClose }) {
         <div className="modal-title">ScriptForge AI — Feature Overview</div>
 
         <div className="about-section">
+          <div className="about-heading">Installation</div>
+
+          <div className="about-install-step">
+            <span className="about-step-label">1. Prerequisites</span>
+            <ul style={{ marginTop: 6 }}>
+              <li>Python 3.11+</li>
+              <li>Node.js 18+</li>
+              <li>Docker (for Sandbox tab)</li>
+              <li>An <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="about-link">Anthropic API key</a></li>
+            </ul>
+          </div>
+
+          <div className="about-install-step">
+            <span className="about-step-label">2. Clone the repo</span>
+            <pre className="about-code">{`git clone https://github.com/Marathon83/scriptforge-ai.git\ncd scriptforge-ai`}</pre>
+          </div>
+
+          <div className="about-install-step">
+            <span className="about-step-label">3. Start the backend</span>
+            <pre className="about-code">{`cd backend\npython3 -m venv venv\nsource venv/bin/activate   # Windows: venv\\Scripts\\activate\npip install -r requirements.txt\nuvicorn app:app --host 127.0.0.1 --port 8000`}</pre>
+          </div>
+
+          <div className="about-install-step">
+            <span className="about-step-label">4. Start the frontend</span>
+            <pre className="about-code">{`cd frontend\nnpm install\nnpm run dev`}</pre>
+            <span style={{ fontSize: 11, color: "var(--text-dim)" }}>Open <strong style={{ color: "var(--text)" }}>http://localhost:5173</strong> — enter your Anthropic API key when prompted.</span>
+          </div>
+
+          <div className="about-install-step">
+            <span className="about-step-label">5. (Optional) Sandbox Docker images</span>
+            <pre className="about-code">{`docker pull alpine:latest\ndocker pull python:3.12-alpine\ndocker pull node:20-alpine\ndocker pull ruby:3-alpine`}</pre>
+            <span style={{ fontSize: 11, color: "var(--text-dim)" }}>Pre-pulling these speeds up first Sandbox run. Docker must be running.</span>
+          </div>
+        </div>
+
+        <div className="about-section">
           <div className="about-heading">Core Infrastructure</div>
           <ul>
             <li><strong>BYOK</strong> — your Anthropic API key stays in your browser only, never logged server-side</li>
